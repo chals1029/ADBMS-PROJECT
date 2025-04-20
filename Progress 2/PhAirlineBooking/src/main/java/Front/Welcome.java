@@ -91,10 +91,10 @@ public class Welcome extends javax.swing.JFrame {
      */
    public static void main(String args[]) {
         
-         FlatRobotoFont.install();
+        FlatRobotoFont.install();
         FlatLaf.registerCustomDefaultsSource("theme");
         UIManager.put("defeaultFont", new Font(FlatRobotoFont.FAMILY,Font.PLAIN,13));
-        FlatMacDarkLaf.setup();
+        FlatLightLaf.setup();
 
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {

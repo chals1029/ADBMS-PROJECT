@@ -138,7 +138,7 @@ public class FrontPage extends javax.swing.JFrame {
         FlatRobotoFont.install();
         FlatLaf.registerCustomDefaultsSource("theme");
         UIManager.put("defeaultFont", new Font(FlatRobotoFont.FAMILY,Font.PLAIN,13));
-        FlatMacDarkLaf.setup();
+        FlatLightLaf.setup();
 
         java.awt.EventQueue.invokeLater(() -> {
             new FrontPage().setVisible(true);

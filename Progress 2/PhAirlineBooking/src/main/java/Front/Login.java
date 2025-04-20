@@ -1,5 +1,4 @@
 package Front;
-import Admin.AdminDashboard;
 import Admin.AdminUser;
 import Admin.Dashboard;
 import Admin.SideBar;
@@ -85,6 +84,7 @@ import javax.swing.JPasswordField;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.AbstractBorder;
 
 import java.awt.CardLayout;
 import java.awt.BorderLayout;
@@ -115,8 +115,9 @@ public class Login extends javax.swing.JFrame {
         showDateDayAndTime();
         fadeIn();
         showGifOnMainPanel();
-        panel.setOpaque(true); 
-        panel.setBackground(new Color(255, 255, 255, 100));
+        Panelto.setOpaque(false); 
+        Panelto.setBackground(new Color(255, 255, 255, 120));
+        Panelto.setBorder(new RoundedBorder(50)); 
         exit.setBackground(new Color(0, 0, 0, 0));
         exit.setOpaque(false); 
         exit.setBorder(BorderFactory.createEmptyBorder());
@@ -126,8 +127,6 @@ public class Login extends javax.swing.JFrame {
         showpass.setOpaque(false); 
         showpass.setBorder(BorderFactory.createEmptyBorder());
         
-
-       
     }
     
     
@@ -202,7 +201,7 @@ public class Login extends javax.swing.JFrame {
         jLabel1 = new javax.swing.JLabel();
         day = new javax.swing.JLabel();
         exit = new javax.swing.JButton();
-        panel = new javax.swing.JPanel();
+        Panelto = new javax.swing.JPanel();
         jLabel5 = new javax.swing.JLabel();
         jLabel6 = new javax.swing.JLabel();
         email = new javax.swing.JTextField();
@@ -247,39 +246,40 @@ public class Login extends javax.swing.JFrame {
         mainPanel.add(exit);
         exit.setBounds(0, -10, 76, 50);
 
-        panel.setBackground(new java.awt.Color(204, 204, 204));
-        panel.setMinimumSize(new java.awt.Dimension(680, 310));
-        panel.setPreferredSize(new java.awt.Dimension(680, 310));
-        panel.setLayout(null);
+        Panelto.setBackground(new java.awt.Color(204, 204, 204));
+        Panelto.setMinimumSize(new java.awt.Dimension(680, 310));
+        Panelto.setPreferredSize(new java.awt.Dimension(680, 310));
+        Panelto.setLayout(null);
 
         jLabel5.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         jLabel5.setForeground(new java.awt.Color(0, 0, 0));
         jLabel5.setText("LOG IN TO PROCEED");
-        panel.add(jLabel5);
+        Panelto.add(jLabel5);
         jLabel5.setBounds(252, 6, 177, 25);
 
         jLabel6.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel6.setForeground(new java.awt.Color(0, 0, 0));
         jLabel6.setText("Email");
-        panel.add(jLabel6);
+        Panelto.add(jLabel6);
         jLabel6.setBounds(150, 50, 59, 20);
 
         email.setBackground(new java.awt.Color(255, 255, 255));
         email.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
-        panel.add(email);
+        Panelto.add(email);
         email.setBounds(140, 70, 407, 26);
 
         jLabel7.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel7.setForeground(new java.awt.Color(0, 0, 0));
         jLabel7.setText("Password");
-        panel.add(jLabel7);
+        Panelto.add(jLabel7);
         jLabel7.setBounds(150, 110, 80, 20);
 
         password.setBackground(new java.awt.Color(255, 255, 255));
         password.setForeground(new java.awt.Color(0, 0, 0));
-        panel.add(password);
+        Panelto.add(password);
         password.setBounds(140, 130, 410, 26);
 
+        login.setBackground(new java.awt.Color(0, 204, 0));
         login.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         login.setText("LOG IN");
         login.addActionListener(new java.awt.event.ActionListener() {
@@ -287,7 +287,7 @@ public class Login extends javax.swing.JFrame {
                 loginActionPerformed(evt);
             }
         });
-        panel.add(login);
+        Panelto.add(login);
         login.setBounds(290, 180, 130, 27);
 
         donthaveacount.setBackground(new java.awt.Color(204, 204, 204));
@@ -299,12 +299,12 @@ public class Login extends javax.swing.JFrame {
                 donthaveacountActionPerformed(evt);
             }
         });
-        panel.add(donthaveacount);
+        Panelto.add(donthaveacount);
         donthaveacount.setBounds(220, 270, 270, 27);
 
         jLabel8.setForeground(new java.awt.Color(204, 0, 0));
         jLabel8.setText("*Password is case sensitive");
-        panel.add(jLabel8);
+        Panelto.add(jLabel8);
         jLabel8.setBounds(150, 160, 140, 16);
 
         showpass.setBackground(new java.awt.Color(204, 204, 204));
@@ -316,7 +316,7 @@ public class Login extends javax.swing.JFrame {
                 showpassActionPerformed(evt);
             }
         });
-        panel.add(showpass);
+        Panelto.add(showpass);
         showpass.setBounds(430, 160, 120, 20);
 
         loginusinggoogle.setBackground(new java.awt.Color(255, 255, 255));
@@ -328,11 +328,11 @@ public class Login extends javax.swing.JFrame {
                 loginusinggoogleActionPerformed(evt);
             }
         });
-        panel.add(loginusinggoogle);
+        Panelto.add(loginusinggoogle);
         loginusinggoogle.setBounds(210, 220, 280, 40);
 
-        mainPanel.add(panel);
-        panel.setBounds(180, 240, 680, 310);
+        mainPanel.add(Panelto);
+        Panelto.setBounds(160, 240, 680, 310);
 
         getContentPane().add(mainPanel, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, -1, -1));
 
@@ -810,9 +810,7 @@ public class Login extends javax.swing.JFrame {
 
     }//GEN-LAST:event_donthaveacountActionPerformed
 
-    private void loginActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loginActionPerformed
-                                  
-                            
+    private void loginActionPerformed(java.awt.event.ActionEvent evt) {                                      
     String emailOrUsername = email.getText();
     String Password = new String(password.getPassword());
 
@@ -825,6 +823,10 @@ public class Login extends javax.swing.JFrame {
     else if (isValidUser(emailOrUsername, Password)) {
         // Customer login
         UserLogin user = getUserByUsernameOrEmail(emailOrUsername);
+        
+        // Set the current user in the UserLogin class so it can be accessed elsewhere
+        UserLogin.setCurrentUser(user);
+        
         switchToUserFront();
     } 
     else {
@@ -978,13 +980,13 @@ private void switchToUserFront() {
     userFront.setVisible(true);
 
 
-    }//GEN-LAST:event_loginActionPerformed
+    }                                     
 
     /**
      * @param args the command line arguments
      */
     public static void main(String args[]) {
-           FlatRobotoFont.install();
+        FlatRobotoFont.install();
         FlatLaf.registerCustomDefaultsSource("theme");
         UIManager.put("defeaultFont", new Font(FlatRobotoFont.FAMILY,Font.PLAIN,13));
         FlatLightLaf.setup();
@@ -1000,6 +1002,7 @@ private void switchToUserFront() {
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel Panelto;
     private javax.swing.JLabel day;
     private javax.swing.JButton donthaveacount;
     private javax.swing.JTextField email;
@@ -1012,8 +1015,42 @@ private void switchToUserFront() {
     private javax.swing.JButton login;
     private javax.swing.JButton loginusinggoogle;
     private javax.swing.JPanel mainPanel;
-    private javax.swing.JPanel panel;
     private javax.swing.JPasswordField password;
     private javax.swing.JCheckBox showpass;
     // End of variables declaration//GEN-END:variables
+
+    private class RoundedBorder extends AbstractBorder {
+        private int radius;
+    
+        RoundedBorder(int radius) {
+            this.radius = radius;
+        }
+    
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            
+            // First draw the background with transparency
+            g2d.setColor(new Color(255, 255, 255, 120)); // White with transparency
+            g2d.fillRoundRect(x, y, width - 1, height - 1, radius, radius);
+            
+            // Then draw the border with a slightly more visible white
+            g2d.setColor(new Color(255, 255, 255, 180)); // Border color - more visible
+            g2d.drawRoundRect(x, y, width - 1, height - 1, radius, radius);
+            
+            g2d.dispose();
+        }
+    
+        @Override
+        public Insets getBorderInsets(Component c) {
+            return new Insets(this.radius / 2, this.radius / 2, this.radius / 2, this.radius / 2);
+        }
+    
+        @Override
+        public Insets getBorderInsets(Component c, Insets insets) {
+            insets.left = insets.top = insets.right = insets.bottom = this.radius / 2;
+            return insets;
+        }
+    }
 }

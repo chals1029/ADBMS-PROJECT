@@ -33,13 +33,13 @@ public class ManagePlane extends javax.swing.JPanel {
         model.setColumnIdentifiers(new String[]{
             "Plane", "Economy Capacity", "Business Capacity", "Vip Capacity",
             "Remaining Economy", "Remaining Business", "Remaining VIP",
-            "Status", "Origin Location", "Destination"
+            "Status", "Origin Location", "Origin Country", "Destination", "Destination Country"
         });
 
         try {
             String query = "SELECT plane_id, plane_name, economy_capacity, business_capacity, vip_capacity, " +
                     "remaining_economy_capacity, remaining_business_capacity, remaining_vip_capacity, status, " +
-                    "origin_location, destination_location FROM planes";
+                    "origin_location, origin_country, destination_location, destination_country FROM planes";
             PreparedStatement pst = conn.prepareStatement(query);
             ResultSet rs = pst.executeQuery();
             while (rs.next()) {
@@ -53,7 +53,9 @@ public class ManagePlane extends javax.swing.JPanel {
                     rs.getInt("remaining_vip_capacity"),
                     rs.getString("status"),
                     rs.getString("origin_location"),
-                    rs.getString("destination_location")
+                    rs.getString("origin_country"),
+                    rs.getString("destination_location"),
+                    rs.getString("destination_country")
                 });
             }
             rs.close();
@@ -63,12 +65,27 @@ public class ManagePlane extends javax.swing.JPanel {
         }
 
         jTable1.setModel(model);
+        
+        // Center align all cell content
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        
+        for (int i = 0; i < jTable1.getColumnCount(); i++) {
+            jTable1.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
+        }
+        
+        // Enable horizontal scrolling
+        jTable1.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        
+        // Set preferred column widths
+        for (int i = 0; i < jTable1.getColumnCount(); i++) {
+            jTable1.getColumnModel().getColumn(i).setPreferredWidth(100);
+        }
 
         // Set status column as combo box
         String[] statusOptions = {"AVAILABLE", "ALREADY FULL", "MAINTENANCE"};
         JComboBox<String> statusCombo = new JComboBox<>(statusOptions);
         jTable1.getColumnModel().getColumn(7).setCellEditor(new DefaultCellEditor(statusCombo));
-
     }
 
    
@@ -317,13 +334,13 @@ public class ManagePlane extends javax.swing.JPanel {
 
         jTable1.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-                {null, null, null, null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null, null, null, null}
+                {null, null, null, null, null, null, null, null, null, null, null, null},
+                {null, null, null, null, null, null, null, null, null, null, null, null},
+                {null, null, null, null, null, null, null, null, null, null, null, null},
+                {null, null, null, null, null, null, null, null, null, null, null, null}
             },
             new String [] {
-                "Plane", "Economy Capacity", "Business Capacity", "Vip Capacity", "Remaining Economy", "Remaining Business", "Remaining VIP", "Status", "Origin Location", "Destination"
+                "Plane", "Economy Capacity", "Business Capacity", "Vip Capacity", "Remaining Economy", "Remaining Business", "Remaining VIP", "Status", "Origin Location", "Origin Country", "Destination", "Destination Country"
             }
         ));
         plane.setViewportView(jTable1);
@@ -342,7 +359,7 @@ public class ManagePlane extends javax.swing.JPanel {
                 jButton1ActionPerformed(evt);
             }
         });
-        add(jButton1, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 50, 80, 40));
+        add(jButton1, new org.netbeans.lib.awtextra.AbsoluteConstraints(50, 40, 80, 40));
 
         update.setText("UPDATE");
         update.addActionListener(new java.awt.event.ActionListener() {
@@ -350,7 +367,7 @@ public class ManagePlane extends javax.swing.JPanel {
                 updateActionPerformed(evt);
             }
         });
-        add(update, new org.netbeans.lib.awtextra.AbsoluteConstraints(150, 50, 90, 40));
+        add(update, new org.netbeans.lib.awtextra.AbsoluteConstraints(140, 40, 90, 40));
     }// </editor-fold>//GEN-END:initComponents
 
     private void updateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updateActionPerformed
