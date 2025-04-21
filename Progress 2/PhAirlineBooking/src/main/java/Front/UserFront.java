@@ -31,11 +31,14 @@ import javax.swing.table.TableCellEditor;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.RowFilter;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.table.TableRowSorter;
 import javax.swing.JPasswordField;
 import javax.swing.JDialog;
 import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+
 import java.awt.Dimension;
 import java.awt.Desktop;
 import java.net.URI;
@@ -45,7 +48,43 @@ import java.awt.Graphics;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
 import javax.swing.table.DefaultTableCellRenderer;
+import java.awt.Font;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.JTableHeader;
+import java.awt.Graphics2D;
+import java.awt.Insets;
+import java.awt.RenderingHints;
+import javax.swing.border.AbstractBorder;
+
+import java.io.FileOutputStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.FontFactory;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
+import java.io.FileOutputStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import javax.swing.event.ChangeListener;
+import javax.swing.JProgressBar;
 
 // ButtonRenderer for JTable
 class ButtonRenderer extends JButton implements TableCellRenderer {
@@ -113,7 +152,7 @@ public class UserFront extends javax.swing.JFrame {
     private Timer slideshowTimer;
     private Timer animationTimer;
     private int currentImageIndex = 0;
-    private final String[] imageNames = {"ph.jpg", "Pal.png", "cebu.jpg"};
+    private final String[] imageNames = {"promotion.jpg", "Pal.png", "palpromotion.jpg"};
     private ImageIcon currentIcon;
     private ImageIcon nextIcon;
     private int animationX = 0;
@@ -121,57 +160,56 @@ public class UserFront extends javax.swing.JFrame {
     private final int ANIMATION_SPEED = 10;
     private final int ANIMATION_DELAY = 20; // milliseconds between animation frames
 
+    private final Map<String, String> destinationAirports = new HashMap<>();
+    private final Map<String, Double> baseFares = new HashMap<>();
+
     public UserFront() {
         initComponents();
-        
-        // Get the current logged-in user
         currentUser = UserLogin.getCurrentUser();
-        
-        // Check if a user is logged in and display their information
-        if (currentUser != null) {
-            displayUserInfo();
-        } else {
-            System.out.println("No user logged in!");
-        }
-        
-        // Continue with your existing initialization
         dbconnect dbc = new dbconnect();
         conn = dbc.getConnection();
         loadFlights();
         loadDestinationsToComboBox();
         setupLiveSearch();
         fadeIn();
-        setupSlideshow();
-        PS.setOpaque(true); 
-        PS.setBackground(new Color(0,0,204,100));
-        SH.setOpaque(true); 
-        SH.setBackground(new Color(255,0,0, 100));
-        
-       
-       
+        setupSlideshow();   
+        initializeDestinationData();
     }
+
+    private void initializeDestinationData() {
+        // Map destinations to their main airports
+        destinationAirports.put("Seoul", "Incheon International Airport");
+        destinationAirports.put("Tokyo", "Narita International Airport");
+        destinationAirports.put("Boracay", "Caticlan Airport");
+        destinationAirports.put("Hong Kong", "Hong Kong International Airport");
+        
+        // Base fares for each destination (in PHP)
+        baseFares.put("Seoul", 18500.00);
+        baseFares.put("Tokyo", 22000.00);
+        baseFares.put("Boracay", 5500.00);
+        baseFares.put("Hong Kong", 12500.00);
+    }
+
+    private Timer fadeTimer;
 
     private void fadeIn() {
         setOpacity(0f);
 
         int fadeDuration = 500;
-        int timerInterval = 10;
-        float opacityIncrement = 1f * timerInterval / fadeDuration;
-
-        Timer fadeTimer = new Timer(timerInterval, new ActionListener() {
+        fadeTimer = new Timer(50, new ActionListener() {
             private float opacity = 0f;
+            private final float increment = 50f / fadeDuration;
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (opacity < 1f) {
-                    opacity += opacityIncrement;
-                    setOpacity(Math.min(opacity, 1f));
-                } else {
-                    ((Timer) e.getSource()).stop();
+                opacity += increment;
+                if (opacity >= 1f) {
+                    opacity = 1f;
+                    fadeTimer.stop();
                 }
+                setOpacity(opacity);
             }
         });
-
         fadeTimer.start();
     }
 
@@ -234,6 +272,9 @@ public class UserFront extends javax.swing.JFrame {
             
             // Set up table display properties for centered data and horizontal scrolling
             setupTableDisplay(flights);
+            
+            // Apply modern table style
+            applyModernTableStyle(flights);
 
         } catch (Exception e) {
             System.out.println("Error loading flights: " + e.getMessage());
@@ -336,6 +377,9 @@ public class UserFront extends javax.swing.JFrame {
             
             // Add this line to maintain table formatting after filtering
             setupTableDisplay(flights);
+            
+            // Apply modern table style
+            applyModernTableStyle(flights);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -361,19 +405,7 @@ public class UserFront extends javax.swing.JFrame {
         }
     }
 
-    private void displayUserInfo() {
-        if (userNameLabel != null) {
-            userNameLabel.setText("Welcome, " + currentUser.getFirstName() + " " + currentUser.getLastName());
-        }
-        
-        if (membershipLabel != null) {
-            membershipLabel.setText("Membership ID: " + currentUser.getMembershipId());
-        }
-        
-        if (pointsLabel != null) {
-            pointsLabel.setText("Points: " + currentUser.getPoints());
-        }
-    }
+    
 
     public String getCurrentUserEmail() {
         return currentUser != null ? currentUser.getEmail() : "";
@@ -561,7 +593,136 @@ public class UserFront extends javax.swing.JFrame {
         panel.setUI(customUI);
     }
 
-    @SuppressWarnings("unchecked")
+    private void applyRoundedButtonStyle(JButton button, Color bgColor, Color textColor) {
+        // Keep existing button styling
+        button.setBackground(bgColor);
+        button.setForeground(textColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setOpaque(true);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        
+        // Add hover effects (keep existing)
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                button.setBackground(bgColor.darker());
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                button.setBackground(bgColor);
+            }
+        });
+        
+        // THIS IS THE KEY CHANGE - Create and apply a rounded border
+        int radius = 15; // Controls how rounded the corners are
+        button.setBorder(BorderFactory.createCompoundBorder(
+            new RoundedBorder(radius, bgColor),
+            BorderFactory.createEmptyBorder(5, 15, 5, 15) // Padding
+        ));
+    }
+
+    // Add this inner class to your UserFront class
+    private class RoundedBorder extends AbstractBorder {
+        private int radius;
+        private Color color;
+        
+        RoundedBorder(int radius, Color color) {
+            this.radius = radius;
+            this.color = color;
+        }
+        
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(color);
+            g2.drawRoundRect(x, y, width - 1, height - 1, radius, radius);
+            g2.dispose();
+        }
+        
+        @Override
+        public Insets getBorderInsets(Component c) {
+            return new Insets(radius/2, radius/2, radius/2, radius/2);
+        }
+        
+        @Override
+        public boolean isBorderOpaque() {
+            return false;
+        }
+    }
+
+  
+
+    private void applyModernTableStyle(JTable table) {
+        // Set row height
+        table.setRowHeight(32);
+        
+        // Remove grid lines
+        table.setShowGrid(false);
+        table.setIntercellSpacing(new Dimension(0, 0));
+        
+        // Custom header renderer
+        JTableHeader header = table.getTableHeader();
+        header.setDefaultRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                JLabel label = (JLabel) super.getTableCellRendererComponent(
+                        table, value, isSelected, hasFocus, row, column);
+                label.setBackground(new Color(0, 102, 204));
+                label.setForeground(Color.WHITE);
+                label.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                label.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 1, 1, new Color(220, 220, 220)),
+                        BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+                label.setHorizontalAlignment(JLabel.CENTER);
+                return label;
+            }
+        });
+        header.setPreferredSize(new Dimension(header.getWidth(), 40));
+        
+        // Alternating row colors and proper padding
+        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                JLabel label = (JLabel) super.getTableCellRendererComponent(
+                        table, value, isSelected, hasFocus, row, column);
+                
+                // Padding
+                label.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+                
+                // Alternating row colors
+                if (row % 2 == 0) {
+                    label.setBackground(Color.WHITE);
+                } else {
+                    label.setBackground(new Color(245, 245, 250));
+                }
+                
+                // Selection color
+                if (isSelected) {
+                    label.setBackground(new Color(232, 242, 254));
+                    label.setForeground(Color.BLACK);
+                }
+                
+                // Center alignment for all columns except possibly the action column
+                label.setHorizontalAlignment(column == 9 ? JLabel.CENTER : JLabel.CENTER);
+                
+                return label;
+            }
+        });
+        
+        // Set selection color
+        table.setSelectionBackground(new Color(232, 242, 254));
+        table.setSelectionForeground(Color.BLACK);
+        
+        // Add some subtle styling to the scroll pane
+        JScrollPane scrollPane = (JScrollPane) table.getParent().getParent();
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getViewport().setBackground(Color.WHITE);
+    }
+
+    
+
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
@@ -570,20 +731,16 @@ public class UserFront extends javax.swing.JFrame {
         jPanel2 = new javax.swing.JPanel();
         jPanel3 = new javax.swing.JPanel();
         jLabel4 = new javax.swing.JLabel();
-        jButton1 = new javax.swing.JButton();
-        ViewUrAccount = new javax.swing.JButton();
-        mytransactionhistory = new javax.swing.JButton();
-        jButton3 = new javax.swing.JButton();
+        jLabel2 = new javax.swing.JLabel();
         jScrollPane2 = new javax.swing.JScrollPane();
         flights = new javax.swing.JTable();
         jLabel3 = new javax.swing.JLabel();
         searchdestination = new javax.swing.JTextField();
         jLabel5 = new javax.swing.JLabel();
-        SelectCountry = new javax.swing.JComboBox<>();
-        booktohongkong = new javax.swing.JButton();
-        booktoboracay = new javax.swing.JButton();
         booktotokyo = new javax.swing.JButton();
         booktoseoul = new javax.swing.JButton();
+        booktoboracay = new javax.swing.JButton();
+        booktohongkong1 = new javax.swing.JButton();
         jLabel15 = new javax.swing.JLabel();
         jLabel8 = new javax.swing.JLabel();
         jLabel9 = new javax.swing.JLabel();
@@ -596,15 +753,18 @@ public class UserFront extends javax.swing.JFrame {
         tokyo = new javax.swing.JLabel();
         jLabel13 = new javax.swing.JLabel();
         boracay = new javax.swing.JLabel();
-        userNameLabel = new javax.swing.JLabel();
-        membershipLabel = new javax.swing.JLabel();
-        pointsLabel = new javax.swing.JLabel();
-        ViewRealtime = new javax.swing.JButton();
         background = new javax.swing.JPanel();
         slideshow = new javax.swing.JPanel();
         PS = new javax.swing.JPanel();
         SH = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
+        PS1 = new javax.swing.JPanel();
+        ViewUrAccount = new javax.swing.JButton();
+        mytransactionhistory = new javax.swing.JButton();
+        ViewRealtime = new javax.swing.JButton();
+        jButton3 = new javax.swing.JButton();
+        jButton1 = new javax.swing.JButton();
+        SelectCountry = new javax.swing.JComboBox<>();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setMinimumSize(new java.awt.Dimension(1000, 600));
@@ -629,11 +789,13 @@ public class UserFront extends javax.swing.JFrame {
         jPanel2.setPreferredSize(new java.awt.Dimension(1000, 1000));
         jPanel2.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        jPanel3.setBackground(new java.awt.Color(0, 0, 153));
+        jPanel3.setBackground(new java.awt.Color(0, 0, 204));
         jPanel3.setForeground(new java.awt.Color(0, 0, 204));
 
         jLabel4.setForeground(new java.awt.Color(255, 255, 255));
         jLabel4.setText("© 2025 Philippine Airlines. All rights reserved.");
+
+        jLabel2.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Screenshot 2025-04-21 142409.png"))); // NOI18N
 
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
@@ -642,55 +804,22 @@ public class UserFront extends javax.swing.JFrame {
             .addGroup(jPanel3Layout.createSequentialGroup()
                 .addGap(42, 42, 42)
                 .addComponent(jLabel4)
-                .addContainerGap(739, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 322, Short.MAX_VALUE)
+                .addComponent(jLabel2)
+                .addGap(35, 35, 35))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel3Layout.createSequentialGroup()
                 .addGap(20, 20, 20)
                 .addComponent(jLabel4)
-                .addContainerGap(24, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
+                .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, Short.MAX_VALUE))
         );
 
-        jPanel2.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(-30, 930, 1020, 60));
-
-        jButton1.setBackground(new java.awt.Color(204, 0, 0));
-        jButton1.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
-        jButton1.setText("EXIT");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton1ActionPerformed(evt);
-            }
-        });
-        jPanel2.add(jButton1, new org.netbeans.lib.awtextra.AbsoluteConstraints(890, 20, -1, 30));
-
-        ViewUrAccount.setBackground(new java.awt.Color(0, 204, 0));
-        ViewUrAccount.setFont(new java.awt.Font("Segoe UI Black", 1, 12)); // NOI18N
-        ViewUrAccount.setForeground(new java.awt.Color(255, 255, 255));
-        ViewUrAccount.setText("MY ACCOUNT");
-        ViewUrAccount.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                ViewUrAccountActionPerformed(evt);
-            }
-        });
-        jPanel2.add(ViewUrAccount, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 220, 130, -1));
-
-        mytransactionhistory.setBackground(new java.awt.Color(0, 204, 0));
-        mytransactionhistory.setFont(new java.awt.Font("Segoe UI Black", 1, 12)); // NOI18N
-        mytransactionhistory.setForeground(new java.awt.Color(255, 255, 255));
-        mytransactionhistory.setText("MY TRANSACTION HISTORY");
-        jPanel2.add(mytransactionhistory, new org.netbeans.lib.awtextra.AbsoluteConstraints(240, 220, 230, -1));
-
-        jButton3.setBackground(new java.awt.Color(0, 204, 0));
-        jButton3.setFont(new java.awt.Font("Segoe UI Black", 1, 12)); // NOI18N
-        jButton3.setForeground(new java.awt.Color(255, 255, 255));
-        jButton3.setText("MY BOOKING HISTORY");
-        jButton3.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton3ActionPerformed(evt);
-            }
-        });
-        jPanel2.add(jButton3, new org.netbeans.lib.awtextra.AbsoluteConstraints(480, 220, -1, -1));
+        jPanel2.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(-20, 930, 1020, 60));
 
         flights.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -705,49 +834,19 @@ public class UserFront extends javax.swing.JFrame {
         ));
         jScrollPane2.setViewportView(flights);
 
-        jPanel2.add(jScrollPane2, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 690, 900, 220));
+        jPanel2.add(jScrollPane2, new org.netbeans.lib.awtextra.AbsoluteConstraints(50, 710, 900, 220));
 
         jLabel3.setBackground(new java.awt.Color(0, 0, 0));
-        jLabel3.setFont(new java.awt.Font("Segoe UI Black", 1, 14)); // NOI18N
-        jLabel3.setForeground(new java.awt.Color(0, 0, 0));
-        jLabel3.setText("ALL AVAILABLE FLIGHTS");
-        jPanel2.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(420, 660, -1, 20));
-        jPanel2.add(searchdestination, new org.netbeans.lib.awtextra.AbsoluteConstraints(110, 656, 190, 30));
+        jLabel3.setFont(new java.awt.Font("Segoe UI Black", 1, 24)); // NOI18N
+        jLabel3.setForeground(new java.awt.Color(0, 0, 51));
+        jLabel3.setText("Discover the best flights with PAL");
+        jPanel2.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(320, 680, -1, 30));
+        jPanel2.add(searchdestination, new org.netbeans.lib.awtextra.AbsoluteConstraints(110, 680, 190, 30));
 
         jLabel5.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
-        jLabel5.setForeground(new java.awt.Color(0, 0, 0));
+        jLabel5.setForeground(new java.awt.Color(0, 0, 51));
         jLabel5.setText("Search");
-        jPanel2.add(jLabel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 640, 60, 60));
-
-        SelectCountry.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Brunei", "Cambodia", "China", "Hong Kong", "Indonesia", "Japan", "Laos", "Macau", "Malaysia", "Mongolia", "Myanmar", "North Korea", "Philippines", "Singapore", "South Korea", "Taiwan", "Thailand", "Timor-Leste", "Vietnam" }));
-        SelectCountry.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                SelectCountryActionPerformed(evt);
-            }
-        });
-        jPanel2.add(SelectCountry, new org.netbeans.lib.awtextra.AbsoluteConstraints(720, 660, -1, 30));
-
-        booktohongkong.setBackground(new java.awt.Color(0, 0, 255));
-        booktohongkong.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
-        booktohongkong.setForeground(new java.awt.Color(255, 255, 255));
-        booktohongkong.setText("BOOK NOW");
-        booktohongkong.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                booktohongkongActionPerformed(evt);
-            }
-        });
-        jPanel2.add(booktohongkong, new org.netbeans.lib.awtextra.AbsoluteConstraints(650, 580, 120, -1));
-
-        booktoboracay.setBackground(new java.awt.Color(0, 0, 255));
-        booktoboracay.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
-        booktoboracay.setForeground(new java.awt.Color(255, 255, 255));
-        booktoboracay.setText("BOOK NOW");
-        booktoboracay.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                booktoboracayActionPerformed(evt);
-            }
-        });
-        jPanel2.add(booktoboracay, new org.netbeans.lib.awtextra.AbsoluteConstraints(230, 580, 120, -1));
+        jPanel2.add(jLabel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 660, 60, 70));
 
         booktotokyo.setBackground(new java.awt.Color(0, 0, 255));
         booktotokyo.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
@@ -770,6 +869,28 @@ public class UserFront extends javax.swing.JFrame {
             }
         });
         jPanel2.add(booktoseoul, new org.netbeans.lib.awtextra.AbsoluteConstraints(230, 390, 120, -1));
+
+        booktoboracay.setBackground(new java.awt.Color(0, 0, 255));
+        booktoboracay.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
+        booktoboracay.setForeground(new java.awt.Color(255, 255, 255));
+        booktoboracay.setText("BOOK NOW");
+        booktoboracay.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                booktoboracayActionPerformed(evt);
+            }
+        });
+        jPanel2.add(booktoboracay, new org.netbeans.lib.awtextra.AbsoluteConstraints(230, 580, 120, -1));
+
+        booktohongkong1.setBackground(new java.awt.Color(0, 0, 255));
+        booktohongkong1.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
+        booktohongkong1.setForeground(new java.awt.Color(255, 255, 255));
+        booktohongkong1.setText("BOOK NOW");
+        booktohongkong1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                booktohongkong1ActionPerformed(evt);
+            }
+        });
+        jPanel2.add(booktohongkong1, new org.netbeans.lib.awtextra.AbsoluteConstraints(650, 580, 120, -1));
 
         jLabel15.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         jLabel15.setForeground(new java.awt.Color(255, 255, 255));
@@ -797,7 +918,6 @@ public class UserFront extends javax.swing.JFrame {
         jPanel2.add(jLabel7, new org.netbeans.lib.awtextra.AbsoluteConstraints(610, 330, -1, -1));
 
         hongkong.setIcon(new javax.swing.ImageIcon(getClass().getResource("/hongkong (2)-modified.png"))); // NOI18N
-        hongkong.setPreferredSize(new java.awt.Dimension(270, 180));
         jPanel2.add(hongkong, new org.netbeans.lib.awtextra.AbsoluteConstraints(570, 440, 270, 180));
 
         jLabel11.setFont(new java.awt.Font("Segoe UI Black", 1, 36)); // NOI18N
@@ -806,7 +926,6 @@ public class UserFront extends javax.swing.JFrame {
         jPanel2.add(jLabel11, new org.netbeans.lib.awtextra.AbsoluteConstraints(240, 250, -1, -1));
 
         seoul.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Seoul (3)-modified.png"))); // NOI18N
-        seoul.setPreferredSize(new java.awt.Dimension(270, 180));
         jPanel2.add(seoul, new org.netbeans.lib.awtextra.AbsoluteConstraints(160, 250, 270, 180));
 
         jLabel12.setFont(new java.awt.Font("Segoe UI Black", 1, 36)); // NOI18N
@@ -815,7 +934,6 @@ public class UserFront extends javax.swing.JFrame {
         jPanel2.add(jLabel12, new org.netbeans.lib.awtextra.AbsoluteConstraints(650, 250, -1, 60));
 
         tokyo.setIcon(new javax.swing.ImageIcon(getClass().getResource("/tokyo (3)-modified.png"))); // NOI18N
-        tokyo.setPreferredSize(new java.awt.Dimension(270, 180));
         jPanel2.add(tokyo, new org.netbeans.lib.awtextra.AbsoluteConstraints(570, 250, 270, 180));
 
         jLabel13.setFont(new java.awt.Font("Segoe UI Black", 1, 36)); // NOI18N
@@ -824,35 +942,7 @@ public class UserFront extends javax.swing.JFrame {
         jPanel2.add(jLabel13, new org.netbeans.lib.awtextra.AbsoluteConstraints(200, 440, -1, -1));
 
         boracay.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Boracay (2)-modified.png"))); // NOI18N
-        boracay.setPreferredSize(new java.awt.Dimension(270, 180));
         jPanel2.add(boracay, new org.netbeans.lib.awtextra.AbsoluteConstraints(160, 440, 270, 180));
-
-        userNameLabel.setBackground(new java.awt.Color(0, 0, 0));
-        userNameLabel.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
-        userNameLabel.setForeground(new java.awt.Color(0, 0, 0));
-        userNameLabel.setText("username");
-        jPanel2.add(userNameLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(170, 10, 270, 80));
-
-        membershipLabel.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
-        membershipLabel.setForeground(new java.awt.Color(0, 0, 0));
-        membershipLabel.setText("membership");
-        jPanel2.add(membershipLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(400, 40, 240, 20));
-
-        pointsLabel.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
-        pointsLabel.setForeground(new java.awt.Color(0, 0, 0));
-        pointsLabel.setText("Points");
-        jPanel2.add(pointsLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(650, 30, 210, 40));
-
-        ViewRealtime.setBackground(new java.awt.Color(0, 204, 0));
-        ViewRealtime.setFont(new java.awt.Font("Segoe UI Black", 1, 12)); // NOI18N
-        ViewRealtime.setForeground(new java.awt.Color(255, 255, 255));
-        ViewRealtime.setText("VIEW REALTIME FLIGHT");
-        ViewRealtime.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                ViewRealtimeActionPerformed(evt);
-            }
-        });
-        jPanel2.add(ViewRealtime, new org.netbeans.lib.awtextra.AbsoluteConstraints(660, 220, 190, -1));
 
         background.setBackground(new java.awt.Color(255, 255, 255));
         background.setForeground(new java.awt.Color(0, 0, 0));
@@ -874,17 +964,8 @@ public class UserFront extends javax.swing.JFrame {
         );
 
         PS.setBackground(new java.awt.Color(0, 0, 204));
-
-        javax.swing.GroupLayout PSLayout = new javax.swing.GroupLayout(PS);
-        PS.setLayout(PSLayout);
-        PSLayout.setHorizontalGroup(
-            PSLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 182, Short.MAX_VALUE)
-        );
-        PSLayout.setVerticalGroup(
-            PSLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 150, Short.MAX_VALUE)
-        );
+        PS.setPreferredSize(new java.awt.Dimension(184, 150));
+        PS.setLayout(null);
 
         SH.setBackground(new java.awt.Color(255, 0, 0));
 
@@ -905,18 +986,18 @@ public class UserFront extends javax.swing.JFrame {
             backgroundLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(backgroundLayout.createSequentialGroup()
                 .addComponent(PS, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 624, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 622, Short.MAX_VALUE)
                 .addComponent(SH, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
             .addGroup(backgroundLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(backgroundLayout.createSequentialGroup()
-                    .addGap(0, 0, Short.MAX_VALUE)
+                    .addGap(0, 183, Short.MAX_VALUE)
                     .addComponent(slideshow, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGap(0, 0, Short.MAX_VALUE)))
+                    .addGap(0, 184, Short.MAX_VALUE)))
         );
         backgroundLayout.setVerticalGroup(
             backgroundLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(PS, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addComponent(SH, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(PS, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addGroup(backgroundLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(backgroundLayout.createSequentialGroup()
                     .addGap(0, 0, Short.MAX_VALUE)
@@ -929,6 +1010,97 @@ public class UserFront extends javax.swing.JFrame {
         jLabel1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/PalLogo-removebg-preview (1).png"))); // NOI18N
         jPanel2.add(jLabel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, -20, -1, -1));
 
+        PS1.setBackground(new java.awt.Color(0, 0, 204));
+
+        ViewUrAccount.setBackground(new java.awt.Color(0, 0, 204));
+        ViewUrAccount.setFont(new java.awt.Font("Segoe UI Black", 1, 12)); // NOI18N
+        ViewUrAccount.setForeground(new java.awt.Color(255, 255, 255));
+        ViewUrAccount.setText("MY ACCOUNT");
+        ViewUrAccount.setBorder(null);
+        ViewUrAccount.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                ViewUrAccountActionPerformed(evt);
+            }
+        });
+
+        mytransactionhistory.setBackground(new java.awt.Color(0, 0, 204));
+        mytransactionhistory.setFont(new java.awt.Font("Segoe UI Black", 1, 12)); // NOI18N
+        mytransactionhistory.setForeground(new java.awt.Color(255, 255, 255));
+        mytransactionhistory.setText("MY TRANSACTION HISTORY");
+        mytransactionhistory.setBorder(null);
+
+        ViewRealtime.setBackground(new java.awt.Color(0, 0, 204));
+        ViewRealtime.setFont(new java.awt.Font("Segoe UI Black", 1, 12)); // NOI18N
+        ViewRealtime.setForeground(new java.awt.Color(255, 255, 255));
+        ViewRealtime.setText("VIEW REALTIME FLIGHT");
+        ViewRealtime.setBorder(null);
+        ViewRealtime.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                ViewRealtimeActionPerformed(evt);
+            }
+        });
+
+        jButton3.setBackground(new java.awt.Color(0, 0, 204));
+        jButton3.setFont(new java.awt.Font("Segoe UI Black", 1, 12)); // NOI18N
+        jButton3.setForeground(new java.awt.Color(255, 255, 255));
+        jButton3.setText("MY BOOKING HISTORY");
+        jButton3.setBorder(null);
+        jButton3.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton3ActionPerformed(evt);
+            }
+        });
+
+        jButton1.setBackground(new java.awt.Color(255, 0, 0));
+        jButton1.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
+        jButton1.setForeground(new java.awt.Color(255, 255, 255));
+        jButton1.setText("EXIT");
+        jButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton1ActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout PS1Layout = new javax.swing.GroupLayout(PS1);
+        PS1.setLayout(PS1Layout);
+        PS1Layout.setHorizontalGroup(
+            PS1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(PS1Layout.createSequentialGroup()
+                .addGap(151, 151, 151)
+                .addComponent(ViewUrAccount, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(mytransactionhistory, javax.swing.GroupLayout.PREFERRED_SIZE, 230, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jButton3)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 17, Short.MAX_VALUE)
+                .addComponent(ViewRealtime, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addComponent(jButton1)
+                .addGap(23, 23, 23))
+        );
+        PS1Layout.setVerticalGroup(
+            PS1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(PS1Layout.createSequentialGroup()
+                .addGap(12, 12, 12)
+                .addGroup(PS1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(ViewUrAccount)
+                    .addComponent(mytransactionhistory)
+                    .addComponent(jButton3)
+                    .addComponent(ViewRealtime)
+                    .addComponent(jButton1))
+                .addContainerGap(113, Short.MAX_VALUE))
+        );
+
+        jPanel2.add(PS1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 990, -1));
+
+        SelectCountry.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Brunei", "Cambodia", "China", "Hong Kong", "Indonesia", "Japan", "Laos", "Macau", "Malaysia", "Mongolia", "Myanmar", "North Korea", "Philippines", "Singapore", "South Korea", "Taiwan", "Thailand", "Timor-Leste", "Vietnam" }));
+        SelectCountry.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                SelectCountryActionPerformed(evt);
+            }
+        });
+        jPanel2.add(SelectCountry, new org.netbeans.lib.awtextra.AbsoluteConstraints(750, 680, -1, 30));
+
         jScrollPane1.setViewportView(jPanel2);
 
         jPanel1.add(jScrollPane1);
@@ -939,37 +1111,6 @@ public class UserFront extends javax.swing.JFrame {
         pack();
         setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
-
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        this.dispose();
-        new Login().setVisible(true);
-    }//GEN-LAST:event_jButton1ActionPerformed
-
-    private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton3ActionPerformed
-
-    private void SelectCountryActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_SelectCountryActionPerformed
-        String selectedCountry = (String) SelectCountry.getSelectedItem();
-        if (selectedCountry != null && !selectedCountry.equals("-- Select Destination Country --")) {
-            loadFlightsByDestination(selectedCountry);
-        } else {
-            // Show all flights if default option is selected
-            loadFlights();
-        }
-    }//GEN-LAST:event_SelectCountryActionPerformed
-
-    private void ViewUrAccountActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ViewUrAccountActionPerformed
-        // TODO add your handling code here:
-         if (currentUser != null) {
-            showUserAccountInfo();
-        } else {
-            JOptionPane.showMessageDialog(this, 
-                "You are not logged in. Please log in to view your account.",
-                "Account Information", 
-                JOptionPane.INFORMATION_MESSAGE);
-        }
-    }//GEN-LAST:event_ViewUrAccountActionPerformed
 
     private void booktoseoulActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_booktoseoulActionPerformed
         // TODO add your handling code here:
@@ -983,12 +1124,28 @@ public class UserFront extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_booktoboracayActionPerformed
 
-    private void booktohongkongActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_booktohongkongActionPerformed
+    private void booktohongkong1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_booktohongkong1ActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_booktohongkongActionPerformed
+    }//GEN-LAST:event_booktohongkong1ActionPerformed
+
+    private void ViewUrAccountActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ViewUrAccountActionPerformed
+          // TODO add your handling code here:
+         if (currentUser != null) {
+            showUserAccountInfo();
+        } else {
+            JOptionPane.showMessageDialog(this, 
+                "You are not logged in. Please log in to view your account.",
+                "Account Information", 
+                JOptionPane.INFORMATION_MESSAGE);
+         }
+    }//GEN-LAST:event_ViewUrAccountActionPerformed
+
+    private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jButton3ActionPerformed
 
     private void ViewRealtimeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ViewRealtimeActionPerformed
-        // TODO add your handling code here:
+           // TODO add your handling code here:
          try {
             Desktop.getDesktop().browse(new URI("https://www.flightaware.com/live/flex_bigmap.rvt?search=-airline%20PAL&time=1745120220&key=de54302b4198f8763d6193c041aa98c5ae5622da&title=Airborne%20Philippine%20Air%20Lines%20&quot;Philippine&quot;%20(PAL)%20Aircraft"));
         } catch (IOException | URISyntaxException e) {
@@ -1000,8 +1157,17 @@ public class UserFront extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_ViewRealtimeActionPerformed
 
-
-    private void showUserAccountInfo() {
+    private void SelectCountryActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_SelectCountryActionPerformed
+        // TODO add your handling code here:
+           String selectedCountry = (String) SelectCountry.getSelectedItem();
+        if (selectedCountry != null && !selectedCountry.equals("-- Select Destination Country --")) {
+            loadFlightsByDestination(selectedCountry);
+        } else {
+            // Show all flights if default option is selected
+            loadFlights();
+        }
+    }
+        private void showUserAccountInfo() {
         // Create a panel with a vertical BoxLayout
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -1170,7 +1336,7 @@ public class UserFront extends javax.swing.JFrame {
                 currentUser.setPassword(password);
                 
                 // Update displayed info
-                displayUserInfo();
+               
                 
                 JOptionPane.showMessageDialog(this, 
                     "Your information has been successfully updated.",
@@ -1189,7 +1355,14 @@ public class UserFront extends javax.swing.JFrame {
                 "Error", 
                 JOptionPane.ERROR_MESSAGE);
         }
-    }
+    
+    }//GEN-LAST:event_SelectCountryActionPerformed
+
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+        // TODO add your handling code here:
+        this.dispose();
+        new Login().setVisible(true);
+    }//GEN-LAST:event_jButton1ActionPerformed
 
     /**
      * @param args the command line arguments
@@ -1208,13 +1381,14 @@ public class UserFront extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel PS;
+    private javax.swing.JPanel PS1;
     private javax.swing.JPanel SH;
     private javax.swing.JComboBox<String> SelectCountry;
     private javax.swing.JButton ViewRealtime;
     private javax.swing.JButton ViewUrAccount;
     private javax.swing.JPanel background;
     private javax.swing.JButton booktoboracay;
-    private javax.swing.JButton booktohongkong;
+    private javax.swing.JButton booktohongkong1;
     private javax.swing.JButton booktoseoul;
     private javax.swing.JButton booktotokyo;
     private javax.swing.JLabel boracay;
@@ -1228,6 +1402,7 @@ public class UserFront extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel13;
     private javax.swing.JLabel jLabel14;
     private javax.swing.JLabel jLabel15;
+    private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
@@ -1239,13 +1414,10 @@ public class UserFront extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel3;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
-    private javax.swing.JLabel membershipLabel;
     private javax.swing.JButton mytransactionhistory;
-    private javax.swing.JLabel pointsLabel;
     private javax.swing.JTextField searchdestination;
     private javax.swing.JLabel seoul;
     private javax.swing.JPanel slideshow;
     private javax.swing.JLabel tokyo;
-    private javax.swing.JLabel userNameLabel;
     // End of variables declaration//GEN-END:variables
 }

@@ -1,9 +1,7 @@
- 
 package Front;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
-import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import javafx.application.Platform;
 import javafx.embed.swing.JFXPanel;
 import javafx.scene.Scene;
@@ -17,71 +15,143 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.net.URL;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javafx.geometry.Pos;
-
 
 public class FrontPage extends javax.swing.JFrame {
     private JFXPanel fxPanel;  
     private MediaPlayer mediaPlayer;
-
+    private ExecutorService executorService;
+    private CompletableFuture<Media> mediaLoadFuture;
     
     public FrontPage() {
+        // Create thread pool
+        executorService = Executors.newFixedThreadPool(2);
+        
+        // Start preloading video in background
+        preloadVideo();
+        
+        // Initialize UI components
         initComponents();
+        
+        // Apply fade-in effect
+        fadeIn();
+        
+        // Initialize video player with preloaded video
         initializeVideoPlayer();
     }
     
+    private void preloadVideo() {
+        mediaLoadFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                // Initialize JavaFX toolkit in advance
+                initializeJavaFX();
+                
+                URL videoUrl = getClass().getResource("/PAL.mp4");
+                if (videoUrl == null) {
+                    System.out.println("Error: Video file not found!");
+                    return null;
+                }
+                
+                String videoPath = videoUrl.toExternalForm();
+                return new Media(videoPath);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
+        }, executorService);
+    }
+    
+    private void initializeJavaFX() {
+        // Initialize JavaFX toolkit
+        new JFXPanel(); // This initializes JavaFX platform
+    }
+    
     private void initializeVideoPlayer() {
-    
-    fxPanel = new JFXPanel();
-    fxPanel.setPreferredSize(fxpanel.getPreferredSize());
+        // Create FX panel
+        fxPanel = new JFXPanel(); // This also initializes JavaFX if not already done
+        fxPanel.setPreferredSize(fxpanel.getPreferredSize());
 
-    fxpanel.setLayout(new BorderLayout());
-    fxpanel.add(fxPanel, BorderLayout.CENTER);
+        fxpanel.setLayout(new BorderLayout());
+        fxpanel.add(fxPanel, BorderLayout.CENTER);
 
+        // Load and play video in a background thread
+        executorService.submit(() -> {
+            try {
+                // Ensure JavaFX is initialized
+                Platform.setImplicitExit(false);
+                Platform.runLater(() -> {});
+
+                // Load media on JavaFX thread
+                Platform.runLater(() -> {
+                    try {
+                        URL videoUrl = getClass().getResource("/PAL.mp4");
+                        if (videoUrl == null) {
+                            SwingUtilities.invokeLater(() -> {
+                                JOptionPane.showMessageDialog(this, "Error: Video file not found!");
+                                transitionToWelcomeScreen();
+                            });
+                            return;
+                        }
+                        String videoPath = videoUrl.toExternalForm();
+                        Media media = new Media(videoPath);
+                        mediaPlayer = new MediaPlayer(media);
+                        MediaView mediaView = new MediaView(mediaPlayer);
+
+                        mediaView.setPreserveRatio(true);
+                        mediaView.setFitWidth(fxPanel.getPreferredSize().width);
+                        mediaView.setFitHeight(fxPanel.getPreferredSize().height);
+
+                        StackPane root = new StackPane(mediaView);
+                        root.setAlignment(Pos.CENTER);
+                        Scene scene = new Scene(root, fxPanel.getPreferredSize().width, fxPanel.getPreferredSize().height);
+
+                        fxPanel.setScene(scene);
+
+                        mediaPlayer.setAutoPlay(true);
+                        mediaPlayer.setOnEndOfMedia(this::transitionToWelcomeScreen);
+                        mediaPlayer.setRate(1.0);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        SwingUtilities.invokeLater(this::transitionToWelcomeScreen);
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+                SwingUtilities.invokeLater(this::transitionToWelcomeScreen);
+            }
+        });
+    }
     
-    Platform.runLater(() -> {
-        
-        URL videoUrl = getClass().getResource("/PAL.mp4");
-        if (videoUrl == null) {
-            System.out.println("Error: Video file not found!");
+    private void transitionToWelcomeScreen() {
+        // Ensure this runs on JavaFX thread
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(this::transitionToWelcomeScreen);
             return;
         }
-
-        String videoPath = videoUrl.toExternalForm();
-        Media media = new Media(videoPath);
-        mediaPlayer = new MediaPlayer(media);
-        MediaView mediaView = new MediaView(mediaPlayer);
-
         
-        mediaView.setPreserveRatio(true);
-        mediaView.setFitWidth(fxPanel.getPreferredSize().width);
-        mediaView.setFitHeight(fxPanel.getPreferredSize().height);
-
+        // Clean up resources
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer.dispose();
+        }
         
-        StackPane root = new StackPane(mediaView);
-        root.setAlignment(Pos.CENTER);
-
-        Scene scene = new Scene(root, fxPanel.getPreferredSize().width, fxPanel.getPreferredSize().height);
-        fxPanel.setScene(scene);
-
-       
-        mediaPlayer.setAutoPlay(true);
-
-        
-        mediaPlayer.setOnEndOfMedia(() -> {
-            SwingUtilities.invokeLater(() -> {
-                
-                new Welcome().setVisible(true);
-                dispose();  
-            });
+        // Switch to welcome screen on Swing EDT
+        SwingUtilities.invokeLater(() -> {
+            new Welcome().setVisible(true);
+            cleanupResources();
+            dispose();
         });
-    });
-}
+    }
 
+    private void cleanupResources() {
+        if (executorService != null) {
+            executorService.shutdown();
+        }
+    }
 
-   
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -133,8 +203,7 @@ public class FrontPage extends javax.swing.JFrame {
         new Welcome().setVisible(true);
     }//GEN-LAST:event_jButton1ActionPerformed
 
-   
-       public static void main(String args[]) {
+    public static void main(String args[]) {
         FlatRobotoFont.install();
         FlatLaf.registerCustomDefaultsSource("theme");
         UIManager.put("defeaultFont", new Font(FlatRobotoFont.FAMILY,Font.PLAIN,13));
@@ -144,39 +213,34 @@ public class FrontPage extends javax.swing.JFrame {
             new FrontPage().setVisible(true);
         });
     }
+
     private void fadeIn() {
-    
-    setOpacity(0f);
+        setOpacity(0f);
 
-    
-    int fadeDuration = 540; 
-    int interval = 30; 
-    int steps = fadeDuration / interval; 
-    float opacityIncrement = 1f / steps;
+        int fadeDuration = 540; 
+        int interval = 30; 
+        int steps = fadeDuration / interval; 
+        float opacityIncrement = 1f / steps;
 
-   
-    Timer fadeTimer = new Timer(interval, new ActionListener() {
-        private float opacity = 0f;
+        Timer fadeTimer = new Timer(interval, new ActionListener() {
+            private float opacity = 0f;
 
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            if (opacity < 1f) {
-                opacity += opacityIncrement;  
-                if (opacity > 1f) {
-                    opacity = 1f;  
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (opacity < 1f) {
+                    opacity += opacityIncrement;  
+                    if (opacity > 1f) {
+                        opacity = 1f;  
+                    }
+                    setOpacity(opacity);  
+                } else {
+                    ((Timer) e.getSource()).stop();
                 }
-                setOpacity(opacity);  
-            } else {
-                
-                ((Timer) e.getSource()).stop();
             }
-        }
-    });
+        });
 
-    
-    fadeTimer.start();
-}
-
+        fadeTimer.start();
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel fxpanel;
